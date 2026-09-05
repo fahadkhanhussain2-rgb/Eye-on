@@ -1,17 +1,16 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.familypulse.app.ui.dashboard
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.familypulse.app.data.FirebaseRepository
 import com.familypulse.app.ui.theme.FamilyPulseLogo
-import kotlinx.coroutines.launch
 
 @Composable
 fun DashboardScreen(
@@ -22,8 +21,6 @@ fun DashboardScreen(
     onNavigateToPairing: () -> Unit,
     onNavigateToMembers: () -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-
     var userName by remember { mutableStateOf("Family Member") }
     var familyId by remember { mutableStateOf("") }
     var memberCount by remember { mutableIntStateOf(0) }
@@ -36,11 +33,18 @@ fun DashboardScreen(
             val profile = repo.getUserProfile(uid)
 
             if (profile != null) {
-                userName = profile.name.ifBlank { "Family Member" }
+                userName = profile.name.ifBlank {
+                    "Family Member"
+                }
+
                 familyId = profile.familyId
 
                 if (familyId.isNotBlank()) {
-                    memberCount = repo.getFamilyMembers(familyId).size
+                    memberCount = try {
+                        repo.getFamilyMembers(familyId).size
+                    } catch (_: Exception) {
+                        0
+                    }
                 }
             }
         }
@@ -66,6 +70,7 @@ fun DashboardScreen(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
+
                 Text(
                     text = "FamilyPulse",
                     style = MaterialTheme.typography.headlineSmall
@@ -90,6 +95,7 @@ fun DashboardScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp)
         ) {
+
             Column(
                 modifier = Modifier.padding(20.dp)
             ) {
@@ -101,41 +107,45 @@ fun DashboardScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                if (loading) {
+                when {
+                    loading -> {
 
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(28.dp)
-                    )
-
-                } else if (familyId.isBlank()) {
-
-                    Text(
-                        text = "Your account is not paired with a family yet.",
-                        color = MaterialTheme.colorScheme.error
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Button(
-                        onClick = onNavigateToPairing,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Set Up Family")
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
 
-                } else {
+                    familyId.isBlank() -> {
 
-                    Text(
-                        text = "Family Code: $familyId",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                        Text(
+                            text = "Your account is not paired with a family yet.",
+                            color = MaterialTheme.colorScheme.error
+                        )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    Text(
-                        text = "$memberCount family member" +
-                                if (memberCount == 1) "" else "s"
-                    )
+                        Button(
+                            onClick = onNavigateToPairing,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Set Up Family")
+                        }
+                    }
+
+                    else -> {
+
+                        Text(
+                            text = "Family Code: $familyId",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "$memberCount family member" +
+                                    if (memberCount == 1) "" else "s"
+                        )
+                    }
                 }
             }
         }
@@ -195,6 +205,7 @@ private fun DashboardButton(
             .padding(vertical = 5.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -205,6 +216,7 @@ private fun DashboardButton(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
+
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium
