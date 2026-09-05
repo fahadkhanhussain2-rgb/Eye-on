@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.familypulse.app.data.FirebaseRepository
 import com.familypulse.app.ui.theme.FamilyPulseLogo
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun DashboardScreen(
@@ -24,7 +25,6 @@ fun DashboardScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
-
     val scope = rememberCoroutineScope()
 
     var userName by remember { mutableStateOf("Family Member") }
@@ -85,12 +85,10 @@ fun DashboardScreen(
             .fillMaxSize()
             .padding(20.dp)
     ) {
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             FamilyPulseLogo(size = 52.dp)
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -109,7 +107,9 @@ fun DashboardScreen(
                 )
             }
 
-            IconButton(onClick = onNavigateToSettings) {
+            IconButton(
+                onClick = onNavigateToSettings
+            ) {
                 Text(
                     "⚙",
                     style = MaterialTheme.typography.titleLarge
@@ -126,7 +126,6 @@ fun DashboardScreen(
             Column(
                 modifier = Modifier.padding(20.dp)
             ) {
-
                 Text(
                     "Family Dashboard",
                     style = MaterialTheme.typography.titleLarge
@@ -135,13 +134,10 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 if (loading) {
-
                     CircularProgressIndicator(
                         modifier = Modifier.size(28.dp)
                     )
-
                 } else if (familyId.isBlank()) {
-
                     Text(
                         "You haven't joined a family yet.",
                         color = MaterialTheme.colorScheme.error
@@ -155,9 +151,7 @@ fun DashboardScreen(
                     ) {
                         Text("Set Up Family")
                     }
-
                 } else {
-
                     Text(
                         "Family Code: $familyId",
                         style = MaterialTheme.typography.bodyLarge
@@ -167,9 +161,9 @@ fun DashboardScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween
                     ) {
-
                         SummaryItem(
                             value = memberCount,
                             label = "Members"
@@ -272,7 +266,6 @@ private fun DashboardButton(
     subtitle: String,
     onClick: () -> Unit
 ) {
-
     Card(
         onClick = onClick,
         modifier = Modifier
@@ -280,18 +273,15 @@ private fun DashboardButton(
             .padding(vertical = 4.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-
                 Text(
                     title,
                     style = MaterialTheme.typography.titleMedium
