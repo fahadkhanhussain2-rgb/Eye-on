@@ -104,7 +104,35 @@ fun PairingScreen(
         }
 
         Spacer(modifier = Modifier.height(12.dp))
+Button(
+    onClick = {
+        loading = true
+        message = ""
 
+        scope.launch {
+            try {
+                val newCode = repo.createFamilyCode()
+
+                db.collection("users")
+                    .document(auth.currentUser?.uid ?: "")
+                    .update("familyId", newCode)
+
+                code = newCode
+                message = "Family created! Your code is: $newCode"
+            } catch (e: Exception) {
+                message = e.message ?: "Could not create family."
+            } finally {
+                loading = false
+            }
+        }
+    },
+    enabled = !loading,
+    modifier = Modifier.fillMaxWidth()
+) {
+    Text("Create Family Code")
+}
+
+Spacer(modifier = Modifier.height(12.dp))
         OutlinedButton(
             onClick = onBack,
             modifier = Modifier.fillMaxWidth()
