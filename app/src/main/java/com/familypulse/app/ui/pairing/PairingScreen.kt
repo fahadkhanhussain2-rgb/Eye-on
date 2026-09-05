@@ -33,6 +33,7 @@ fun PairingScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
         Text(
             text = "Family Pairing",
             style = MaterialTheme.typography.headlineMedium
@@ -74,32 +75,37 @@ fun PairingScreen(
                 loading = true
                 message = ""
 
-                db.collection("families")
-                    .document(code)
-                    .get()
-                    .addOnSuccessListener { family ->
+                scope.launch {
+                    try {
+                        val family = db.collection("families")
+                            .document(code)
+                            .get()
+                            .await()
+
                         if (!family.exists()) {
-                            loading = false
                             message = "Family code not found."
-                            return@addOnSuccessListener
+                            return@launch
                         }
 
                         db.collection("users")
                             .document(uid)
                             .update("familyId", code)
-                            .addOnSuccessListener {
-                                loading = false
-                                message = "Family joined successfully!"
-                            }
-                            .addOnFailureListener {
-                                loading = false
-                                message = it.message ?: "Could not join family."
-                            }
-                    }
-                    .addOnFailureListener {
+                            .await()
+
+                        val profile = repo.getUserProfile(uid)
+
+                        message = "Family joined successfully!"
+
+                        if (profile != null) {
+                            onPairingComplete(profile)
+                        }
+
+                    } catch (e: Exception) {
+                        message = e.message ?: "Could not join family."
+                    } finally {
                         loading = false
-                        message = it.message ?: "Connection failed."
                     }
+                }
             },
             enabled = !loading,
             modifier = Modifier.fillMaxWidth()
@@ -132,6 +138,13 @@ fun PairingScreen(
 
                         code = newCode
                         message = "Family created! Your code is: $newCode"
+
+                        val profile = repo.getUserProfile(uid)
+
+                        if (profile != null) {
+                            onPairingComplete(profile)
+                        }
+
                     } catch (e: Exception) {
                         message = e.message ?: "Could not create family."
                     } finally {
