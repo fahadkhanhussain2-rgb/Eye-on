@@ -104,4 +104,59 @@ fun PairingScreen(
             enabled = !loading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (loading) "Joining..." else "
+            Text(if (loading) "Joining..." else "Join Family")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = {
+                val uid = auth.currentUser?.uid
+
+                if (uid == null) {
+                    message = "Please log in first."
+                    return@Button
+                }
+
+                loading = true
+                message = ""
+
+                scope.launch {
+                    try {
+                        val newCode = repo.createFamilyCode()
+
+                        db.collection("users")
+                            .document(uid)
+                            .update("familyId", newCode)
+                            .await()
+
+                        code = newCode
+                        message = "Family created! Your code is: $newCode"
+                    } catch (e: Exception) {
+                        message = e.message ?: "Could not create family."
+                    } finally {
+                        loading = false
+                    }
+                }
+            },
+            enabled = !loading,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (loading) "Creating..." else "Create Family Code")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Back")
+        }
+
+        if (message.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(message)
+        }
+    }
+}
