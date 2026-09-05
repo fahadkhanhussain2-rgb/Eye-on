@@ -100,11 +100,14 @@ fun FamilyPulseApp() {
                     }
                 },
                 onNavigateToTasks = {
-                    navController.navigate("tasks")
-                },
-                onNavigateToCheckIn = {
-                    navController.navigate("checkin")
-                }
+    navController.navigate("tasks")
+},
+onNavigateToCheckIn = {
+    navController.navigate("checkin")
+},
+onNavigateToPairing = {
+    navController.navigate("pairing")
+}
             )
         }
 
