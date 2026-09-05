@@ -50,12 +50,16 @@ fun FamilyPulseApp() {
 
     var familyId by remember { mutableStateOf("") }
 
-    LaunchedEffect(auth.currentUser?.uid) {
+    suspend fun refreshFamilyId() {
         val uid = auth.currentUser?.uid
 
         if (uid != null) {
             familyId = repo.getUserProfile(uid)?.familyId ?: ""
         }
+    }
+
+    LaunchedEffect(auth.currentUser?.uid) {
+        refreshFamilyId()
     }
 
     val startDestination =
@@ -73,9 +77,13 @@ fun FamilyPulseApp() {
                     navController.navigate("register")
                 },
                 onLoginSuccess = {
-                    navController.navigate("dashboard") {
-                        popUpTo("login") {
-                            inclusive = true
+                    scope.launch {
+                        refreshFamilyId()
+
+                        navController.navigate("dashboard") {
+                            popUpTo("login") {
+                                inclusive = true
+                            }
                         }
                     }
                 }
@@ -88,9 +96,13 @@ fun FamilyPulseApp() {
                     navController.popBackStack()
                 },
                 onRegisterSuccess = {
-                    navController.navigate("dashboard") {
-                        popUpTo("register") {
-                            inclusive = true
+                    scope.launch {
+                        refreshFamilyId()
+
+                        navController.navigate("dashboard") {
+                            popUpTo("register") {
+                                inclusive = true
+                            }
                         }
                     }
                 }
@@ -127,12 +139,7 @@ fun FamilyPulseApp() {
                 repo = repo,
                 onPairingComplete = {
                     scope.launch {
-                        val uid = auth.currentUser?.uid
-
-                        if (uid != null) {
-                            familyId = repo.getUserProfile(uid)?.familyId ?: ""
-                        }
-
+                        refreshFamilyId()
                         navController.popBackStack()
                     }
                 },
