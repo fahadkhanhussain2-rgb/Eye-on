@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -18,6 +20,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,8 +40,33 @@ fun CheckInScreen(
     var isSending by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
+    var checkIns by remember {
+        mutableStateOf<List<ManualCheckIn>>(emptyList())
+    }
+
     val locationClient = remember {
         LocationServices.getFusedLocationProviderClient(context)
+    }
+
+    fun loadCheckIns() {
+        if (familyId.isBlank()) return
+
+        repo.getCheckIns(familyId)
+            .get()
+            .addOnSuccessListener { result ->
+                checkIns = result.documents
+                    .mapNotNull {
+                        it.toObject(ManualCheckIn::class.java)
+                    }
+                    .sortedByDescending { it.timestamp }
+            }
+            .addOnFailureListener {
+                message = it.message ?: "Could not load check-in history."
+            }
+    }
+
+    LaunchedEffect(familyId) {
+        loadCheckIns()
     }
 
     val permissionLauncher =
@@ -60,6 +90,8 @@ fun CheckInScreen(
                         { isSending = it },
                         { message = it }
                     )
+
+                    loadCheckIns()
                 }
             } else {
                 message = "Location permission was not granted."
@@ -83,7 +115,7 @@ fun CheckInScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp)
+                .padding(20.dp)
         ) {
 
             Text(
@@ -91,70 +123,112 @@ fun CheckInScreen(
                 style = MaterialTheme.typography.headlineSmall
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = { Text("Status note") },
-                placeholder = { Text("I'm home and doing well.") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            if (familyId.isBlank()) {
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    "Pair your account with a family before sending a check-in.",
+                    color = MaterialTheme.colorScheme.error
+                )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
+            } else {
+
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Status note") },
+                    placeholder = {
+                        Text("I'm home and doing well.")
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        "Include my location",
-                        style = MaterialTheme.typography.titleMedium
-                    )
 
-                    Text(
-                        "Optional. Location is shared with your family."
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            "Include my location",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        Text(
+                            "Optional. Location is shared with your family."
+                        )
+                    }
+
+                    Switch(
+                        checked = includeLocation,
+                        onCheckedChange = {
+                            includeLocation = it
+                        }
                     )
                 }
 
-                Switch(
-                    checked = includeLocation,
-                    onCheckedChange = { includeLocation = it }
-                )
-            }
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
+                message?.let {
 
-            message?.let {
-                Text(
-                    it,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.primary
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
-            }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
-            Button(
-                onClick = {
+                Button(
+                    onClick = {
 
-                    if (includeLocation) {
+                        if (includeLocation) {
 
-                        val fineGranted =
-                            ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                            ) == PackageManager.PERMISSION_GRANTED
+                            val fineGranted =
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.ACCESS_FINE_LOCATION
+                                ) == PackageManager.PERMISSION_GRANTED
 
-                        val coarseGranted =
-                            ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ) == PackageManager.PERMISSION_GRANTED
+                            val coarseGranted =
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                ) == PackageManager.PERMISSION_GRANTED
 
-                        if (fineGranted || coarseGranted) {
+                            if (fineGranted || coarseGranted) {
+
+                                scope.launch {
+                                    sendCheckIn(
+                                        repo,
+                                        familyId,
+                                        auth,
+                                        note,
+                                        locationClient,
+                                        true,
+                                        { isSending = it },
+                                        { message = it }
+                                    )
+
+                                    loadCheckIns()
+                                }
+
+                            } else {
+
+                                permissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            }
+
+                        } else {
 
                             scope.launch {
                                 sendCheckIn(
@@ -163,43 +237,112 @@ fun CheckInScreen(
                                     auth,
                                     note,
                                     locationClient,
-                                    true,
+                                    false,
                                     { isSending = it },
                                     { message = it }
                                 )
+
+                                loadCheckIns()
                             }
-
+                        }
+                    },
+                    enabled = !isSending,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (isSending) {
+                            "Sending..."
                         } else {
-
-                            permissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                            )
+                            "Send Check-In"
                         }
+                    )
+                }
+            }
 
-                    } else {
+            Spacer(modifier = Modifier.height(24.dp))
 
-                        scope.launch {
-                            sendCheckIn(
-                                repo,
-                                familyId,
-                                auth,
-                                note,
-                                locationClient,
-                                false,
-                                { isSending = it },
-                                { message = it }
-                            )
-                        }
+            Text(
+                "Recent Check-Ins",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (checkIns.isEmpty()) {
+
+                Text("No check-ins yet.")
+
+            } else {
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+
+                    items(checkIns) { checkIn ->
+
+                        CheckInCard(checkIn)
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CheckInCard(
+    checkIn: ManualCheckIn
+) {
+    val dateText = remember(checkIn.timestamp) {
+        SimpleDateFormat(
+            "MMM dd, yyyy • hh:mm a",
+            Locale.getDefault()
+        ).format(Date(checkIn.timestamp))
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp)
+    ) {
+
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Text(
+                text = checkIn.userName.ifBlank {
+                    "Family Member"
                 },
-                enabled = !isSending,
-                modifier = Modifier.fillMaxWidth()
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(3.dp))
+
+            Text(
+                text = dateText,
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            if (checkIn.note.isNotBlank()) {
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(checkIn.note)
+            }
+
+            if (
+                checkIn.latitude != null &&
+                checkIn.longitude != null
             ) {
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                 Text(
-                    if (isSending) "Sending..." else "Send Check-In"
+                    "Location included",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -217,12 +360,18 @@ private suspend fun sendCheckIn(
     onMessage: (String) -> Unit
 ) {
     try {
+
         onSendingChanged(true)
 
         val uid = auth.currentUser?.uid
 
         if (uid == null) {
             onMessage("Please log in again.")
+            return
+        }
+
+        if (familyId.isBlank()) {
+            onMessage("Please pair with a family first.")
             return
         }
 
@@ -234,16 +383,22 @@ private suspend fun sendCheckIn(
                 .await()
 
         val userName =
-            userDocument.getString("name") ?: "Family member"
+            userDocument.getString("name")
+                ?: "Family Member"
 
         var latitude: Double? = null
         var longitude: Double? = null
 
         if (includeLocation) {
+
             try {
-                val location = locationClient.lastLocation.await()
+
+                val location =
+                    locationClient.lastLocation.await()
+
                 latitude = location?.latitude
                 longitude = location?.longitude
+
             } catch (_: Exception) {
                 // Check-in can still be sent without location.
             }
@@ -266,10 +421,13 @@ private suspend fun sendCheckIn(
         onMessage("Check-in sent successfully.")
 
     } catch (e: Exception) {
+
         onMessage(
             e.message ?: "Could not send check-in."
         )
+
     } finally {
+
         onSendingChanged(false)
     }
 }
