@@ -1,4 +1,4 @@
-package com.familypulse.app
+ package com.familypulse.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -6,7 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -14,16 +15,14 @@ import androidx.navigation.compose.rememberNavController
 import com.familypulse.app.data.FirebaseRepository
 import com.familypulse.app.ui.auth.LoginScreen
 import com.familypulse.app.ui.auth.RegisterScreen
-import com.familypulse.app.ui.checkin.CheckInScreen
 import com.familypulse.app.ui.dashboard.DashboardScreen
 import com.familypulse.app.ui.pairing.PairingScreen
 import com.familypulse.app.ui.tasks.TasksScreen
+import com.familypulse.app.ui.checkin.CheckInScreen
 import com.familypulse.app.ui.theme.FamilyPulseTheme
 import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
-
-    private val repo = FirebaseRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,7 +33,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    FamilyPulseApp(repo)
+                    FamilyPulseApp()
                 }
             }
         }
@@ -42,9 +41,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun FamilyPulseApp(repo: FirebaseRepository) {
+fun FamilyPulseApp() {
 
     val navController = rememberNavController()
+    val repo = remember { FirebaseRepository() }
     val auth = FirebaseAuth.getInstance()
 
     val startDestination =
@@ -87,6 +87,7 @@ fun FamilyPulseApp(repo: FirebaseRepository) {
         }
 
         composable("dashboard") {
+
             DashboardScreen(
                 repo = repo,
                 onLogout = {
@@ -108,14 +109,11 @@ fun FamilyPulseApp(repo: FirebaseRepository) {
         }
 
         composable("pairing") {
+
             PairingScreen(
                 repo = repo,
-                onPairingComplete = { profile ->
-                    navController.navigate("dashboard") {
-                        popUpTo("pairing") {
-                            inclusive = true
-                        }
-                    }
+                onPairingComplete = {
+                    navController.popBackStack()
                 },
                 onBack = {
                     navController.popBackStack()
@@ -125,52 +123,28 @@ fun FamilyPulseApp(repo: FirebaseRepository) {
 
         composable("tasks") {
 
-            val uid = auth.currentUser?.uid
+            val currentUser = auth.currentUser
 
-            if (uid != null) {
-                val profile by produceState<com.familypulse.app.models.UserProfile?>(
-                    initialValue = null
-                ) {
-                    value = repo.getUserProfile(uid)
+            TasksScreen(
+                repo = repo,
+                familyId = currentUser?.uid ?: "",
+                onBack = {
+                    navController.popBackStack()
                 }
-
-                val familyId = profile?.familyId
-
-                if (!familyId.isNullOrBlank()) {
-                    TasksScreen(
-                        repo = repo,
-                        familyId = familyId,
-                        onBack = {
-                            navController.popBackStack()
-                        }
-                    )
-                }
-            }
+            )
         }
 
         composable("checkin") {
 
-            val uid = auth.currentUser?.uid
+            val currentUser = auth.currentUser
 
-            if (uid != null) {
-                val profile by produceState<com.familypulse.app.models.UserProfile?>(
-                    initialValue = null
-                ) {
-                    value = repo.getUserProfile(uid)
+            CheckInScreen(
+                repo = repo,
+                familyId = currentUser?.uid ?: "",
+                onBack = {
+                    navController.popBackStack()
                 }
-
-                val familyId = profile?.familyId
-
-                if (!familyId.isNullOrBlank()) {
-                    CheckInScreen(
-                        repo = repo,
-                        familyId = familyId,
-                        onBack = {
-                            navController.popBackStack()
-                        }
-                    )
-                }
-            }
+            )
         }
     }
 }
