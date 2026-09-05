@@ -19,6 +19,7 @@ import com.familypulse.app.ui.dashboard.DashboardScreen
 import com.familypulse.app.ui.members.FamilyMembersScreen
 import com.familypulse.app.ui.pairing.PairingScreen
 import com.familypulse.app.ui.profile.ProfileScreen
+import com.familypulse.app.ui.settings.SettingsScreen
 import com.familypulse.app.ui.tasks.TasksScreen
 import com.familypulse.app.ui.theme.FamilyPulseTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -30,20 +31,52 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            FamilyPulseTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    FamilyPulseApp()
-                }
-            }
+            FamilyPulseApp()
         }
     }
 }
 
 @Composable
 fun FamilyPulseApp() {
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val preferences = remember {
+        context.getSharedPreferences(
+            "familypulse",
+            android.content.Context.MODE_PRIVATE
+        )
+    }
+
+    var darkTheme by remember {
+        mutableStateOf(
+            preferences.getBoolean("dark_mode", false)
+        )
+    }
+
+    FamilyPulseTheme(darkTheme = darkTheme) {
+
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            FamilyPulseNavigation(
+                darkTheme = darkTheme,
+                onDarkThemeChanged = {
+                    darkTheme = it
+                    preferences.edit()
+                        .putBoolean("dark_mode", it)
+                        .apply()
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FamilyPulseNavigation(
+    darkTheme: Boolean,
+    onDarkThemeChanged: (Boolean) -> Unit
+) {
 
     val navController = rememberNavController()
     val repo = remember { FirebaseRepository() }
@@ -55,20 +88,13 @@ fun FamilyPulseApp() {
     }
 
     fun refreshFamilyId() {
-
         scope.launch {
-
             val uid = auth.currentUser?.uid
 
-            if (uid != null) {
-
-                val profile = repo.getUserProfile(uid)
-
-                familyId = profile?.familyId ?: ""
-
+            familyId = if (uid != null) {
+                repo.getUserProfile(uid)?.familyId ?: ""
             } else {
-
-                familyId = ""
+                ""
             }
         }
     }
@@ -78,11 +104,8 @@ fun FamilyPulseApp() {
     }
 
     val startDestination =
-        if (auth.currentUser != null) {
-            "dashboard"
-        } else {
-            "login"
-        }
+        if (auth.currentUser != null) "dashboard"
+        else "login"
 
     NavHost(
         navController = navController,
@@ -90,16 +113,12 @@ fun FamilyPulseApp() {
     ) {
 
         composable("login") {
-
             LoginScreen(
                 onNavigateToRegister = {
                     navController.navigate("register")
                 },
-
                 onLoginSuccess = {
-
                     refreshFamilyId()
-
                     navController.navigate("dashboard") {
                         popUpTo("login") {
                             inclusive = true
@@ -110,16 +129,12 @@ fun FamilyPulseApp() {
         }
 
         composable("register") {
-
             RegisterScreen(
                 onNavigateToLogin = {
                     navController.popBackStack()
                 },
-
                 onRegisterSuccess = {
-
                     refreshFamilyId()
-
                     navController.navigate("dashboard") {
                         popUpTo("register") {
                             inclusive = true
@@ -130,12 +145,10 @@ fun FamilyPulseApp() {
         }
 
         composable("dashboard") {
-
             DashboardScreen(
                 repo = repo,
 
                 onLogout = {
-
                     auth.signOut()
                     familyId = ""
 
@@ -163,16 +176,22 @@ fun FamilyPulseApp() {
                 onNavigateToMembers = {
                     refreshFamilyId()
                     navController.navigate("members")
+                },
+
+                onNavigateToProfile = {
+                    navController.navigate("profile")
+                },
+
+                onNavigateToSettings = {
+                    navController.navigate("settings")
                 }
             )
         }
 
         composable("members") {
-
             FamilyMembersScreen(
                 repo = repo,
                 familyId = familyId,
-
                 onBack = {
                     navController.popBackStack()
                 }
@@ -180,11 +199,9 @@ fun FamilyPulseApp() {
         }
 
         composable("tasks") {
-
             TasksScreen(
                 repo = repo,
                 familyId = familyId,
-
                 onBack = {
                     navController.popBackStack()
                 }
@@ -192,11 +209,9 @@ fun FamilyPulseApp() {
         }
 
         composable("checkin") {
-
             CheckInScreen(
                 repo = repo,
                 familyId = familyId,
-
                 onBack = {
                     navController.popBackStack()
                 }
@@ -204,17 +219,12 @@ fun FamilyPulseApp() {
         }
 
         composable("pairing") {
-
             PairingScreen(
                 repo = repo,
-
                 onPairingComplete = {
-
                     refreshFamilyId()
-
                     navController.popBackStack()
                 },
-
                 onBack = {
                     navController.popBackStack()
                 }
@@ -222,16 +232,12 @@ fun FamilyPulseApp() {
         }
 
         composable("profile") {
-
             ProfileScreen(
                 repo = repo,
-
                 onBack = {
                     navController.popBackStack()
                 },
-
                 onLogout = {
-
                     auth.signOut()
                     familyId = ""
 
@@ -240,6 +246,17 @@ fun FamilyPulseApp() {
                             inclusive = true
                         }
                     }
+                }
+            )
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                repo = repo,
+                darkTheme = darkTheme,
+                onDarkThemeChanged = onDarkThemeChanged,
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }
