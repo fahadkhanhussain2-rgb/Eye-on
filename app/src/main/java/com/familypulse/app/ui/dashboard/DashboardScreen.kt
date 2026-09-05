@@ -13,7 +13,8 @@ fun DashboardScreen(
     repo: FirebaseRepository,
     onLogout: () -> Unit,
     onNavigateToTasks: () -> Unit,
-    onNavigateToCheckIn: () -> Unit
+    onNavigateToCheckIn: () -> Unit,
+    onNavigateToPairing: () -> Unit
 ) {
     val user = repo.getCurrentUser()
 
