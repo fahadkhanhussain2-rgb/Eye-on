@@ -21,8 +21,30 @@ fun TasksScreen(
     var description by remember { mutableStateOf("") }
     var tasks by remember { mutableStateOf<List<FamilyTask>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
 
     val scope = rememberCoroutineScope()
+
+    fun loadTasks() {
+        if (familyId.isBlank()) return
+
+        repo.getTasks(familyId)
+            .get()
+            .addOnSuccessListener { result ->
+                tasks = result.documents.mapNotNull { document ->
+                    document.toObject(FamilyTask::class.java)?.copy(
+                        id = document.id
+                    )
+                }
+            }
+            .addOnFailureListener {
+                error = it.message ?: "Could not load tasks."
+            }
+    }
+
+    LaunchedEffect(familyId) {
+        loadTasks()
+    }
 
     Column(
         modifier = Modifier
@@ -57,9 +79,17 @@ fun TasksScreen(
 
         Button(
             onClick = {
-                if (title.isBlank() || familyId.isBlank()) return@Button
+                if (title.isBlank() || familyId.isBlank()) {
+                    error = if (familyId.isBlank()) {
+                        "Family is not paired yet."
+                    } else {
+                        "Please enter a task title."
+                    }
+                    return@Button
+                }
 
                 loading = true
+                error = ""
 
                 scope.launch {
                     try {
@@ -73,6 +103,10 @@ fun TasksScreen(
 
                         title = ""
                         description = ""
+
+                        loadTasks()
+                    } catch (e: Exception) {
+                        error = e.message ?: "Could not add task."
                     } finally {
                         loading = false
                     }
@@ -84,13 +118,12 @@ fun TasksScreen(
             Text(if (loading) "Adding..." else "Add Task")
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Button(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Back")
+        if (error.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -123,6 +156,15 @@ fun TasksScreen(
                     }
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Back")
         }
     }
 }
