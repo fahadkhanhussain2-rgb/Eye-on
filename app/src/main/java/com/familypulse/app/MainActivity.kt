@@ -14,10 +14,11 @@ import androidx.navigation.compose.rememberNavController
 import com.familypulse.app.data.FirebaseRepository
 import com.familypulse.app.ui.auth.LoginScreen
 import com.familypulse.app.ui.auth.RegisterScreen
+import com.familypulse.app.ui.checkin.CheckInScreen
 import com.familypulse.app.ui.dashboard.DashboardScreen
+import com.familypulse.app.ui.members.FamilyMembersScreen
 import com.familypulse.app.ui.pairing.PairingScreen
 import com.familypulse.app.ui.tasks.TasksScreen
-import com.familypulse.app.ui.checkin.CheckInScreen
 import com.familypulse.app.ui.theme.FamilyPulseTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
@@ -48,13 +49,26 @@ fun FamilyPulseApp() {
     val auth = FirebaseAuth.getInstance()
     val scope = rememberCoroutineScope()
 
-    var familyId by remember { mutableStateOf("") }
+    var familyId by remember {
+        mutableStateOf("")
+    }
 
-    suspend fun refreshFamilyId() {
-        val uid = auth.currentUser?.uid
+    fun refreshFamilyId() {
 
-        if (uid != null) {
-            familyId = repo.getUserProfile(uid)?.familyId ?: ""
+        scope.launch {
+
+            val uid = auth.currentUser?.uid
+
+            if (uid != null) {
+
+                val profile = repo.getUserProfile(uid)
+
+                familyId = profile?.familyId ?: ""
+
+            } else {
+
+                familyId = ""
+            }
         }
     }
 
@@ -63,8 +77,11 @@ fun FamilyPulseApp() {
     }
 
     val startDestination =
-        if (auth.currentUser != null) "dashboard"
-        else "login"
+        if (auth.currentUser != null) {
+            "dashboard"
+        } else {
+            "login"
+        }
 
     NavHost(
         navController = navController,
@@ -72,18 +89,19 @@ fun FamilyPulseApp() {
     ) {
 
         composable("login") {
+
             LoginScreen(
                 onNavigateToRegister = {
                     navController.navigate("register")
                 },
-                onLoginSuccess = {
-                    scope.launch {
-                        refreshFamilyId()
 
-                        navController.navigate("dashboard") {
-                            popUpTo("login") {
-                                inclusive = true
-                            }
+                onLoginSuccess = {
+
+                    refreshFamilyId()
+
+                    navController.navigate("dashboard") {
+                        popUpTo("login") {
+                            inclusive = true
                         }
                     }
                 }
@@ -91,18 +109,19 @@ fun FamilyPulseApp() {
         }
 
         composable("register") {
+
             RegisterScreen(
                 onNavigateToLogin = {
                     navController.popBackStack()
                 },
-                onRegisterSuccess = {
-                    scope.launch {
-                        refreshFamilyId()
 
-                        navController.navigate("dashboard") {
-                            popUpTo("register") {
-                                inclusive = true
-                            }
+                onRegisterSuccess = {
+
+                    refreshFamilyId()
+
+                    navController.navigate("dashboard") {
+                        popUpTo("register") {
+                            inclusive = true
                         }
                     }
                 }
@@ -110,9 +129,12 @@ fun FamilyPulseApp() {
         }
 
         composable("dashboard") {
+
             DashboardScreen(
                 repo = repo,
+
                 onLogout = {
+
                     auth.signOut()
                     familyId = ""
 
@@ -122,27 +144,52 @@ fun FamilyPulseApp() {
                         }
                     }
                 },
+
                 onNavigateToTasks = {
+                    refreshFamilyId()
                     navController.navigate("tasks")
                 },
+
                 onNavigateToCheckIn = {
+                    refreshFamilyId()
                     navController.navigate("checkin")
                 },
+
                 onNavigateToPairing = {
                     navController.navigate("pairing")
+                },
+
+                onNavigateToMembers = {
+                    refreshFamilyId()
+                    navController.navigate("members")
                 }
             )
         }
 
         composable("pairing") {
+
             PairingScreen(
                 repo = repo,
+
                 onPairingComplete = {
-                    scope.launch {
-                        refreshFamilyId()
-                        navController.popBackStack()
-                    }
+
+                    refreshFamilyId()
+
+                    navController.popBackStack()
                 },
+
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("members") {
+
+            FamilyMembersScreen(
+                repo = repo,
+                familyId = familyId,
+
                 onBack = {
                     navController.popBackStack()
                 }
@@ -150,9 +197,11 @@ fun FamilyPulseApp() {
         }
 
         composable("tasks") {
+
             TasksScreen(
                 repo = repo,
                 familyId = familyId,
+
                 onBack = {
                     navController.popBackStack()
                 }
@@ -160,9 +209,11 @@ fun FamilyPulseApp() {
         }
 
         composable("checkin") {
+
             CheckInScreen(
                 repo = repo,
                 familyId = familyId,
+
                 onBack = {
                     navController.popBackStack()
                 }
