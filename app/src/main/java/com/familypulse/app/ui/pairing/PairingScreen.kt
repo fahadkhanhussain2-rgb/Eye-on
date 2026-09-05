@@ -10,6 +10,8 @@ import com.familypulse.app.data.FirebaseRepository
 import com.familypulse.app.models.UserProfile
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun PairingScreen(
@@ -23,6 +25,7 @@ fun PairingScreen(
 
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -37,7 +40,7 @@ fun PairingScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Enter a 6-digit family code.")
+        Text("Create a family or enter a 6-digit family code.")
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -69,6 +72,7 @@ fun PairingScreen(
                 }
 
                 loading = true
+                message = ""
 
                 db.collection("families")
                     .document(code)
@@ -100,49 +104,4 @@ fun PairingScreen(
             enabled = !loading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (loading) "Joining..." else "Join Family")
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-Button(
-    onClick = {
-        loading = true
-        message = ""
-
-        scope.launch {
-            try {
-                val newCode = repo.createFamilyCode()
-
-                db.collection("users")
-                    .document(auth.currentUser?.uid ?: "")
-                    .update("familyId", newCode)
-
-                code = newCode
-                message = "Family created! Your code is: $newCode"
-            } catch (e: Exception) {
-                message = e.message ?: "Could not create family."
-            } finally {
-                loading = false
-            }
-        }
-    },
-    enabled = !loading,
-    modifier = Modifier.fillMaxWidth()
-) {
-    Text("Create Family Code")
-}
-
-Spacer(modifier = Modifier.height(12.dp))
-        OutlinedButton(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Back")
-        }
-
-        if (message.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(message)
-        }
-    }
-}
+            Text(if (loading) "Joining..." else "
