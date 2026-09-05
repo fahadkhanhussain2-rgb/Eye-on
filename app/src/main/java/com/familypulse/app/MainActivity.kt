@@ -1,4 +1,4 @@
- package com.familypulse.app
+package com.familypulse.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -6,8 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,6 +20,7 @@ import com.familypulse.app.ui.tasks.TasksScreen
 import com.familypulse.app.ui.checkin.CheckInScreen
 import com.familypulse.app.ui.theme.FamilyPulseTheme
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -46,6 +46,17 @@ fun FamilyPulseApp() {
     val navController = rememberNavController()
     val repo = remember { FirebaseRepository() }
     val auth = FirebaseAuth.getInstance()
+    val scope = rememberCoroutineScope()
+
+    var familyId by remember { mutableStateOf("") }
+
+    LaunchedEffect(auth.currentUser?.uid) {
+        val uid = auth.currentUser?.uid
+
+        if (uid != null) {
+            familyId = repo.getUserProfile(uid)?.familyId ?: ""
+        }
+    }
 
     val startDestination =
         if (auth.currentUser != null) "dashboard"
@@ -87,11 +98,11 @@ fun FamilyPulseApp() {
         }
 
         composable("dashboard") {
-
             DashboardScreen(
                 repo = repo,
                 onLogout = {
                     auth.signOut()
+                    familyId = ""
 
                     navController.navigate("login") {
                         popUpTo("dashboard") {
@@ -100,23 +111,30 @@ fun FamilyPulseApp() {
                     }
                 },
                 onNavigateToTasks = {
-    navController.navigate("tasks")
-},
-onNavigateToCheckIn = {
-    navController.navigate("checkin")
-},
-onNavigateToPairing = {
-    navController.navigate("pairing")
-}
+                    navController.navigate("tasks")
+                },
+                onNavigateToCheckIn = {
+                    navController.navigate("checkin")
+                },
+                onNavigateToPairing = {
+                    navController.navigate("pairing")
+                }
             )
         }
 
         composable("pairing") {
-
             PairingScreen(
                 repo = repo,
                 onPairingComplete = {
-                    navController.popBackStack()
+                    scope.launch {
+                        val uid = auth.currentUser?.uid
+
+                        if (uid != null) {
+                            familyId = repo.getUserProfile(uid)?.familyId ?: ""
+                        }
+
+                        navController.popBackStack()
+                    }
                 },
                 onBack = {
                     navController.popBackStack()
@@ -125,12 +143,9 @@ onNavigateToPairing = {
         }
 
         composable("tasks") {
-
-            val currentUser = auth.currentUser
-
             TasksScreen(
                 repo = repo,
-                familyId = currentUser?.uid ?: "",
+                familyId = familyId,
                 onBack = {
                     navController.popBackStack()
                 }
@@ -138,12 +153,9 @@ onNavigateToPairing = {
         }
 
         composable("checkin") {
-
-            val currentUser = auth.currentUser
-
             CheckInScreen(
                 repo = repo,
-                familyId = currentUser?.uid ?: "",
+                familyId = familyId,
                 onBack = {
                     navController.popBackStack()
                 }
