@@ -30,18 +30,29 @@ fun ProfileScreen(
         mutableStateOf("")
     }
 
-    LaunchedEffect(Unit) {
-        val uid = repo.getCurrentUser()?.uid
+    fun loadProfile() {
+        scope.launch {
+            loading = true
+            error = ""
 
-        if (uid != null) {
             try {
-                profile = repo.getUserProfile(uid)
+                val uid = repo.getCurrentUser()?.uid
+
+                if (uid != null) {
+                    profile = repo.getUserProfile(uid)
+                } else {
+                    error = "Please log in again."
+                }
             } catch (e: Exception) {
                 error = e.message ?: "Could not load profile."
+            } finally {
+                loading = false
             }
         }
+    }
 
-        loading = false
+    LaunchedEffect(Unit) {
+        loadProfile()
     }
 
     Column(
@@ -57,27 +68,36 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (loading) {
+        when {
+            loading -> {
 
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
 
-        } else if (error.isNotBlank()) {
+            error.isNotBlank() -> {
 
-            Text(
-                text = error,
-                color = MaterialTheme.colorScheme.error
-            )
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error
+                )
 
-        } else {
+                Spacer(modifier = Modifier.height(12.dp))
 
-            val currentProfile = profile
+                OutlinedButton(
+                    onClick = { loadProfile() }
+                ) {
+                    Text("Try Again")
+                }
+            }
 
-            if (currentProfile != null) {
+            profile != null -> {
+
+                val currentProfile = profile!!
 
                 Card(
                     modifier = Modifier.fillMaxWidth()
@@ -103,7 +123,7 @@ fun ProfileScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        HorizontalDivider()
+                        Divider()
 
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -111,6 +131,8 @@ fun ProfileScreen(
                             text = "Role",
                             style = MaterialTheme.typography.labelLarge
                         )
+
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = currentProfile.role,
@@ -124,6 +146,8 @@ fun ProfileScreen(
                             text = "Family",
                             style = MaterialTheme.typography.labelLarge
                         )
+
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = if (currentProfile.familyId.isBlank()) {
@@ -141,6 +165,8 @@ fun ProfileScreen(
                             style = MaterialTheme.typography.labelLarge
                         )
 
+                        Spacer(modifier = Modifier.height(4.dp))
+
                         Text(
                             text = if (currentProfile.hasConsented) {
                                 "Consent enabled"
@@ -156,17 +182,11 @@ fun ProfileScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
                     onClick = {
-                        scope.launch {
-                            val uid = repo.getCurrentUser()?.uid
-
-                            if (uid != null) {
-                                profile = repo.getUserProfile(uid)
-                            }
-                        }
+                        loadProfile()
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -181,6 +201,11 @@ fun ProfileScreen(
                 ) {
                     Text("Logout")
                 }
+            }
+
+            else -> {
+
+                Text("Profile not found.")
             }
         }
 
