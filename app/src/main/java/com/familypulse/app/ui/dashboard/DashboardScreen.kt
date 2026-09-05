@@ -75,6 +75,14 @@ fun DashboardScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Manual Check-In")
+            Spacer(modifier = Modifier.height(12.dp))
+
+Button(
+    onClick = onNavigateToPairing,
+    modifier = Modifier.fillMaxWidth()
+) {
+    Text("Family Pairing")
+}
         }
 
         Spacer(modifier = Modifier.weight(1f))
