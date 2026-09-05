@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -13,11 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material3.Text
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 
-private val FamilyPulseLightColors = lightColorScheme(
+private val LightColors = lightColorScheme(
     primary = Color(0xFF3157D5),
     onPrimary = Color.White,
     secondary = Color(0xFF536DCC),
@@ -27,8 +27,9 @@ private val FamilyPulseLightColors = lightColorScheme(
     onSurface = Color(0xFF171923)
 )
 
-private val FamilyPulseDarkColors = darkColorScheme(
+private val DarkColors = darkColorScheme(
     primary = Color(0xFF9EAEFF),
+    onPrimary = Color(0xFF10131C),
     secondary = Color(0xFFB8C2FF),
     background = Color(0xFF10131C),
     surface = Color(0xFF191D28),
@@ -41,11 +42,12 @@ fun FamilyPulseTheme(
     darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
+
     MaterialTheme(
         colorScheme = if (darkTheme) {
-            FamilyPulseDarkColors
+            DarkColors
         } else {
-            FamilyPulseLightColors
+            LightColors
         },
         typography = androidx.compose.material3.Typography(),
         content = content
@@ -56,13 +58,17 @@ fun FamilyPulseTheme(
 fun FamilyPulseLogo(
     size: Dp
 ) {
+
     Box(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary),
+            .background(
+                MaterialTheme.colorScheme.primary
+            ),
         contentAlignment = Alignment.Center
     ) {
+
         Text(
             text = "FP",
             color = MaterialTheme.colorScheme.onPrimary,
