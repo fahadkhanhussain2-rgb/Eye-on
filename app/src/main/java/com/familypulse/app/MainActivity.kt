@@ -18,6 +18,7 @@ import com.familypulse.app.ui.checkin.CheckInScreen
 import com.familypulse.app.ui.dashboard.DashboardScreen
 import com.familypulse.app.ui.members.FamilyMembersScreen
 import com.familypulse.app.ui.pairing.PairingScreen
+import com.familypulse.app.ui.profile.ProfileScreen
 import com.familypulse.app.ui.tasks.TasksScreen
 import com.familypulse.app.ui.theme.FamilyPulseTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -166,24 +167,6 @@ fun FamilyPulseApp() {
             )
         }
 
-        composable("pairing") {
-
-            PairingScreen(
-                repo = repo,
-
-                onPairingComplete = {
-
-                    refreshFamilyId()
-
-                    navController.popBackStack()
-                },
-
-                onBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
         composable("members") {
 
             FamilyMembersScreen(
@@ -216,6 +199,47 @@ fun FamilyPulseApp() {
 
                 onBack = {
                     navController.popBackStack()
+                }
+            )
+        }
+
+        composable("pairing") {
+
+            PairingScreen(
+                repo = repo,
+
+                onPairingComplete = {
+
+                    refreshFamilyId()
+
+                    navController.popBackStack()
+                },
+
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("profile") {
+
+            ProfileScreen(
+                repo = repo,
+
+                onBack = {
+                    navController.popBackStack()
+                },
+
+                onLogout = {
+
+                    auth.signOut()
+                    familyId = ""
+
+                    navController.navigate("login") {
+                        popUpTo("dashboard") {
+                            inclusive = true
+                        }
+                    }
                 }
             )
         }
