@@ -21,7 +21,7 @@ class FirebaseRepository {
                 .get()
                 .await()
                 .toObject(UserProfile::class.java)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -49,6 +49,31 @@ class FirebaseRepository {
             .await()
     }
 
+    suspend fun updateTask(
+        familyId: String,
+        taskId: String,
+        updates: Map<String, Any>
+    ) {
+        db.collection("families")
+            .document(familyId)
+            .collection("tasks")
+            .document(taskId)
+            .update(updates)
+            .await()
+    }
+
+    suspend fun deleteTask(
+        familyId: String,
+        taskId: String
+    ) {
+        db.collection("families")
+            .document(familyId)
+            .collection("tasks")
+            .document(taskId)
+            .delete()
+            .await()
+    }
+
     fun getCheckIns(familyId: String) =
         db.collection("families")
             .document(familyId)
@@ -65,19 +90,50 @@ class FirebaseRepository {
             .await()
     }
 
-    suspend fun createFamilyCode(): String {
-        val code = (100000..999999).random().toString()
+    suspend fun getFamilyMembers(
+        familyId: String
+    ): List<UserProfile> {
 
-        db.collection("families")
-            .document(code)
-            .set(
-                mapOf(
-                    "createdBy" to auth.currentUser?.uid,
-                    "createdAt" to System.currentTimeMillis()
-                )
-            )
+        if (familyId.isBlank()) {
+            return emptyList()
+        }
+
+        return db.collection("users")
+            .whereEqualTo("familyId", familyId)
+            .get()
             .await()
+            .documents
+            .mapNotNull {
+                it.toObject(UserProfile::class.java)
+            }
+    }
 
-        return code
+    suspend fun createFamilyCode(): String {
+
+        repeat(5) {
+
+            val code = (100000..999999)
+                .random()
+                .toString()
+
+            val ref = db.collection("families")
+                .document(code)
+
+            if (!ref.get().await().exists()) {
+
+                ref.set(
+                    mapOf(
+                        "createdBy" to auth.currentUser?.uid,
+                        "createdAt" to System.currentTimeMillis()
+                    )
+                ).await()
+
+                return code
+            }
+        }
+
+        throw IllegalStateException(
+            "Could not create a unique family code. Please try again."
+        )
     }
 }
