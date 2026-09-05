@@ -51,16 +51,29 @@ fun TasksScreen(
             .fillMaxSize()
             .padding(20.dp)
     ) {
+
         Text(
             text = "Family Tasks",
             style = MaterialTheme.typography.headlineMedium
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (familyId.isBlank()) {
+            Text(
+                text = "Family is not paired yet.",
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = title,
-            onValueChange = { title = it },
+            onValueChange = {
+                title = it
+                error = ""
+            },
             label = { Text("Task Title") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -70,7 +83,10 @@ fun TasksScreen(
 
         OutlinedTextField(
             value = description,
-            onValueChange = { description = it },
+            onValueChange = {
+                description = it
+                error = ""
+            },
             label = { Text("Description") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -79,12 +95,13 @@ fun TasksScreen(
 
         Button(
             onClick = {
-                if (title.isBlank() || familyId.isBlank()) {
-                    error = if (familyId.isBlank()) {
-                        "Family is not paired yet."
-                    } else {
-                        "Please enter a task title."
-                    }
+                if (familyId.isBlank()) {
+                    error = "Family is not paired yet."
+                    return@Button
+                }
+
+                if (title.isBlank()) {
+                    error = "Please enter a task title."
                     return@Button
                 }
 
@@ -112,7 +129,7 @@ fun TasksScreen(
                     }
                 }
             },
-            enabled = !loading,
+            enabled = !loading && familyId.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (loading) "Adding..." else "Add Task")
@@ -120,6 +137,7 @@ fun TasksScreen(
 
         if (error.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
+
             Text(
                 text = error,
                 color = MaterialTheme.colorScheme.error
@@ -132,7 +150,9 @@ fun TasksScreen(
             Text("No tasks added yet.")
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
             ) {
                 items(tasks) { task ->
                     Card(
