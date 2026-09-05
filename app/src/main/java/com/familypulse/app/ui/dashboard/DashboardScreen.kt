@@ -71,4 +71,18 @@ fun DashboardScreen(
 
         Button(
             onClick = onNavigateToCheckIn,
-            modifier
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Manual Check-In")
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        OutlinedButton(
+            onClick = onLogout,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Logout")
+        }
+    }
+}
