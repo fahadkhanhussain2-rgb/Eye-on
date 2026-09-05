@@ -10,7 +10,6 @@ import androidx.compose.ui.unit.dp
 import com.familypulse.app.data.FirebaseRepository
 import com.familypulse.app.models.FamilyTask
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 @Composable
 fun TasksScreen(
@@ -29,23 +28,18 @@ fun TasksScreen(
     fun loadTasks() {
         if (familyId.isBlank()) return
 
-        scope.launch {
-            try {
-                val result = repo.getTasks(familyId)
-                    .get()
-                    .await()
-
+        repo.getTasks(familyId)
+            .get()
+            .addOnSuccessListener { result ->
                 tasks = result.documents.mapNotNull { document ->
                     document.toObject(FamilyTask::class.java)?.copy(
                         id = document.id
                     )
                 }
-
-                error = ""
-            } catch (e: Exception) {
-                error = e.message ?: "Could not load tasks."
             }
-        }
+            .addOnFailureListener {
+                error = it.message ?: "Could not load tasks."
+            }
     }
 
     LaunchedEffect(familyId) {
@@ -153,11 +147,7 @@ fun TasksScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    if (loading) {
-                        "Adding..."
-                    } else {
-                        "Add Task"
-                    }
+                    if (loading) "Adding..." else "Add Task"
                 )
             }
         }
@@ -203,46 +193,44 @@ fun TasksScreen(
 
                         onComplete = {
 
-                            scope.launch {
-                                try {
-
-                                    repo.updateTask(
-                                        familyId = familyId,
-                                        taskId = task.id,
-                                        updates = mapOf(
-                                            "isCompleted" to true
-                                        )
-                                    )
-
-                                    loadTasks()
-
-                                } catch (e: Exception) {
-                                    error = e.message
-                                        ?: "Could not complete task."
+                            // Immediately update the screen
+                            tasks = tasks.map {
+                                if (it.id == task.id) {
+                                    it.copy(isCompleted = true)
+                                } else {
+                                    it
                                 }
                             }
+
+                            // Save the completed status to Firebase
+                            repo.getTasks(familyId)
+                                .document(task.id)
+                                .update("isCompleted", true)
+                                .addOnFailureListener {
+                                    error = it.message
+                                        ?: "Could not save completed task."
+                                }
                         },
 
                         onMarkPending = {
 
-                            scope.launch {
-                                try {
-
-                                    repo.updateTask(
-                                        familyId = familyId,
-                                        taskId = task.id,
-                                        updates = mapOf(
-                                            "isCompleted" to false
-                                        )
-                                    )
-
-                                    loadTasks()
-
-                                } catch (e: Exception) {
-                                    error = e.message
-                                        ?: "Could not mark task pending."
+                            // Immediately update the screen
+                            tasks = tasks.map {
+                                if (it.id == task.id) {
+                                    it.copy(isCompleted = false)
+                                } else {
+                                    it
                                 }
                             }
+
+                            // Save pending status to Firebase
+                            repo.getTasks(familyId)
+                                .document(task.id)
+                                .update("isCompleted", false)
+                                .addOnFailureListener {
+                                    error = it.message
+                                        ?: "Could not update task."
+                                }
                         },
 
                         onDelete = {
@@ -255,7 +243,9 @@ fun TasksScreen(
                                         taskId = task.id
                                     )
 
-                                    loadTasks()
+                                    tasks = tasks.filter {
+                                        it.id != task.id
+                                    }
 
                                 } catch (e: Exception) {
                                     error = e.message
@@ -325,7 +315,7 @@ private fun TaskCard(
 
                 } else {
 
-                    TextButton(
+                    Button(
                         onClick = onComplete
                     ) {
                         Text("Complete")
@@ -341,12 +331,12 @@ private fun TaskCard(
 
             if (task.isCompleted) {
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
                     text = "✓ Completed",
                     color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
