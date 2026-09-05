@@ -38,13 +38,21 @@ class FirebaseRepository {
             .document(familyId)
             .collection("tasks")
 
-    suspend fun addTask(familyId: String, task: FamilyTask) {
+    suspend fun addTask(
+        familyId: String,
+        task: FamilyTask
+    ) {
         db.collection("families")
             .document(familyId)
             .collection("tasks")
             .add(task)
             .await()
     }
+
+    fun getCheckIns(familyId: String) =
+        db.collection("families")
+            .document(familyId)
+            .collection("checkins")
 
     suspend fun sendCheckIn(
         familyId: String,
@@ -57,23 +65,19 @@ class FirebaseRepository {
             .await()
     }
 
-    fun getCheckIns(familyId: String) =
+    suspend fun createFamilyCode(): String {
+        val code = (100000..999999).random().toString()
+
         db.collection("families")
-            .document(familyId)
-            .collection("checkins")
-            suspend fun createFamilyCode(): String {
-    val code = (100000..999999).random().toString()
-
-    db.collection("families")
-        .document(code)
-        .set(
-            mapOf(
-                "createdBy" to auth.currentUser?.uid,
-                "createdAt" to System.currentTimeMillis()
+            .document(code)
+            .set(
+                mapOf(
+                    "createdBy" to auth.currentUser?.uid,
+                    "createdAt" to System.currentTimeMillis()
+                )
             )
-        )
-        .await()
+            .await()
 
-    return code
-            }
+        return code
+    }
 }
