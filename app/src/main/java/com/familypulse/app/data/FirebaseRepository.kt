@@ -61,4 +61,19 @@ class FirebaseRepository {
         db.collection("families")
             .document(familyId)
             .collection("checkins")
+            suspend fun createFamilyCode(): String {
+    val code = (100000..999999).random().toString()
+
+    db.collection("families")
+        .document(code)
+        .set(
+            mapOf(
+                "createdBy" to auth.currentUser?.uid,
+                "createdAt" to System.currentTimeMillis()
+            )
+        )
+        .await()
+
+    return code
+            }
 }
