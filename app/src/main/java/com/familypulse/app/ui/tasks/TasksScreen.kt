@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import com.familypulse.app.data.FirebaseRepository
 import com.familypulse.app.models.FamilyTask
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun TasksScreen(
@@ -28,18 +29,23 @@ fun TasksScreen(
     fun loadTasks() {
         if (familyId.isBlank()) return
 
-        repo.getTasks(familyId)
-            .get()
-            .addOnSuccessListener { result ->
+        scope.launch {
+            try {
+                val result = repo.getTasks(familyId)
+                    .get()
+                    .await()
+
                 tasks = result.documents.mapNotNull { document ->
                     document.toObject(FamilyTask::class.java)?.copy(
                         id = document.id
                     )
                 }
+
+                error = ""
+            } catch (e: Exception) {
+                error = e.message ?: "Could not load tasks."
             }
-            .addOnFailureListener {
-                error = it.message ?: "Could not load tasks."
-            }
+        }
     }
 
     LaunchedEffect(familyId) {
@@ -74,7 +80,9 @@ fun TasksScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    Text("Pair your account before creating family tasks.")
+                    Text(
+                        "Pair your account before creating family tasks."
+                    )
                 }
             }
 
@@ -82,7 +90,10 @@ fun TasksScreen(
 
             OutlinedTextField(
                 value = title,
-                onValueChange = { title = it },
+                onValueChange = {
+                    title = it
+                    error = ""
+                },
                 label = { Text("Task Title") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -92,7 +103,10 @@ fun TasksScreen(
 
             OutlinedTextField(
                 value = description,
-                onValueChange = { description = it },
+                onValueChange = {
+                    description = it
+                    error = ""
+                },
                 label = { Text("Description") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -128,7 +142,8 @@ fun TasksScreen(
                             loadTasks()
 
                         } catch (e: Exception) {
-                            error = e.message ?: "Could not add task."
+                            error = e.message
+                                ?: "Could not add task."
                         } finally {
                             loading = false
                         }
@@ -138,12 +153,17 @@ fun TasksScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    if (loading) "Adding..." else "Add Task"
+                    if (loading) {
+                        "Adding..."
+                    } else {
+                        "Add Task"
+                    }
                 )
             }
         }
 
         if (error.isNotEmpty()) {
+
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
@@ -180,6 +200,7 @@ fun TasksScreen(
 
                     TaskCard(
                         task = task,
+
                         onComplete = {
 
                             scope.launch {
@@ -189,7 +210,7 @@ fun TasksScreen(
                                         familyId = familyId,
                                         taskId = task.id,
                                         updates = mapOf(
-                                            "isCompleted" to !task.isCompleted
+                                            "isCompleted" to true
                                         )
                                     )
 
@@ -197,10 +218,33 @@ fun TasksScreen(
 
                                 } catch (e: Exception) {
                                     error = e.message
-                                        ?: "Could not update task."
+                                        ?: "Could not complete task."
                                 }
                             }
                         },
+
+                        onMarkPending = {
+
+                            scope.launch {
+                                try {
+
+                                    repo.updateTask(
+                                        familyId = familyId,
+                                        taskId = task.id,
+                                        updates = mapOf(
+                                            "isCompleted" to false
+                                        )
+                                    )
+
+                                    loadTasks()
+
+                                } catch (e: Exception) {
+                                    error = e.message
+                                        ?: "Could not mark task pending."
+                                }
+                            }
+                        },
+
                         onDelete = {
 
                             scope.launch {
@@ -239,6 +283,7 @@ fun TasksScreen(
 private fun TaskCard(
     task: FamilyTask,
     onComplete: () -> Unit,
+    onMarkPending: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -270,16 +315,21 @@ private fun TaskCard(
                 horizontalArrangement = Arrangement.End
             ) {
 
-                TextButton(
-                    onClick = onComplete
-                ) {
-                    Text(
-                        if (task.isCompleted) {
-                            "Mark Pending"
-                        } else {
-                            "Complete"
-                        }
-                    )
+                if (task.isCompleted) {
+
+                    TextButton(
+                        onClick = onMarkPending
+                    ) {
+                        Text("Mark Pending")
+                    }
+
+                } else {
+
+                    TextButton(
+                        onClick = onComplete
+                    ) {
+                        Text("Complete")
+                    }
                 }
 
                 TextButton(
@@ -290,6 +340,8 @@ private fun TaskCard(
             }
 
             if (task.isCompleted) {
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "✓ Completed",
