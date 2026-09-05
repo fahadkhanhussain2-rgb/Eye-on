@@ -16,6 +16,7 @@ import com.familypulse.app.ui.auth.LoginScreen
 import com.familypulse.app.ui.auth.RegisterScreen
 import com.familypulse.app.ui.checkin.CheckInScreen
 import com.familypulse.app.ui.dashboard.DashboardScreen
+import com.familypulse.app.ui.pairing.PairingScreen
 import com.familypulse.app.ui.tasks.TasksScreen
 import com.familypulse.app.ui.theme.FamilyPulseTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -102,6 +103,22 @@ fun FamilyPulseApp(repo: FirebaseRepository) {
                 },
                 onNavigateToCheckIn = {
                     navController.navigate("checkin")
+                }
+            )
+        }
+
+        composable("pairing") {
+            PairingScreen(
+                repo = repo,
+                onPairingComplete = { profile ->
+                    navController.navigate("dashboard") {
+                        popUpTo("pairing") {
+                            inclusive = true
+                        }
+                    }
+                },
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }
